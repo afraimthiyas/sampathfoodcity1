@@ -1,38 +1,45 @@
-# Using node.js as base image
-FROM node:20.11.1 AS base
+# Stage 1: Build the Application
+# We use node:22 as the base for building and installing dependencies.
+FROM node:22 AS build
 
-# Setting up working directory inside our container
-WORKDIR /app
+# Set the working directory inside the container
+WORKDIR /usr/src/app
 
-# Copy package.json and package-lock.json to the working directory
+# Copy package.json and package-lock.json first to leverage Docker caching.
+# If these files don't change, subsequent builds can skip 'npm install'.
 COPY package*.json ./
-
-# Copy yarn.lock file ensures that the exact versions of the dependencies specified in it are installed
-COPY yarn.lock ./
-
-# Copy prisma here to run our below prisma generate file 
-COPY prisma ./prisma
-
-# This will make sure that the dependencies installed exactly 
-# match the versions specified in the yarn.lock file
-RUN yarn install --frozen-lockfile
-
-# To generate the prisma Client
-RUN npx prisma generate
-
-# Copy only the specific part of application code to the working directory
 COPY tsconfig.json ./
-COPY src/ /app/src/
 
-# Building the NestJs application
-RUN yarn build
+# Install dependencies including TypeScript
+RUN npm install
+RUN npm install --save-dev typescript @types/node
 
-# Expose the port the app will run on
-EXPOSE 3000
+# Copy the rest of the application source code
+COPY . .
 
-# Add entrypoint script
-COPY entrypoint.sh /app/entrypoint.sh
-RUN chmod +x /app/entrypoint.sh
+# Build TypeScript
+RUN npm run build || npx tsc
 
-# Command to run the app 
-ENTRYPOINT ["/app/entrypoint.sh"]
+# Stage 2: Create the Final Production Image
+# We use node:22-slim as a minimal runtime image.
+FROM node:22-slim
+
+# Set the working directory
+WORKDIR /usr/src/app
+
+# Copy only production dependencies
+COPY --from=build /usr/src/app/package*.json ./
+RUN npm install --only=production
+
+# Copy the built application files from the 'build' stage
+COPY --from=build /usr/src/app/dist ./dist
+
+# Expose the port your app runs on
+ENV PORT=8080
+EXPOSE $PORT
+
+# Run the application using the non-root user (recommended for security)
+USER node
+
+# Define the command to start your application
+CMD [ "node", "dist/index.js" ]

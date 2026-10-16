@@ -1,19 +1,40 @@
+# Dependency/Build Directories
+node_modules
+npm-debug.log
+.npm
+
+# TypeScript source files (we only need compiled JS in production)
+src
+*.ts
+!*.d.ts
+
+# Project Files
 .git
-*.log
-*.md
-*.test.js
+.gitignore
+.dockerignore
+Dockerfile
+fly.toml # Fly.io configuration file
+tsconfig.json
+tslint.json
+.eslintrc*
 
-# Ignore environment variables
+# Environment/Configuration Files
 .env
+.DS_Store
+*.log
 
-# Ignore configuration files
-config/*.yml
+# Development/Testing files and directories
+test
+tests
+__tests__
+docs
+coverage
+.nyc_output
+tmp
+*~
 
-# Ignore sensitive credentials
-secrets/
-
-# Ignore node_modules to avoid redundancy if using multi-stage builds
-node_modules/
-
-# Ignore logs
-logs/
+# IDE files
+.vscode
+.idea
+*.swp
+*.swo
